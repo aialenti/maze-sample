@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Selector</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .photo-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .photo {
+            max-width: 100%;
+            max-height: calc(100vh - 150px);
+            object-fit: contain;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.2em;
+            color: #666;
+        }
+
+        .buttons {
+            display: flex;
+            justify-content: space-around;
+            padding: 20px;
+            background: #f5f5f5;
+            position: sticky;
+            bottom: 0;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 1.2em;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            min-width: 120px;
+        }
+
+        .approve {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .skip {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .error-message {
+            text-align: center;
+            color: #f44336;
+            margin: 20px;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="photo-container">
+            <img id="current-photo" class="photo" style="display: none">
+            <div class="loading">Loading...</div>
+        </div>
+        <div class="error-message" style="display: none"></div>
+        <div class="buttons">
+            <button class="skip" onclick="handleSkip()">Skip</button>
+            <button class="approve" onclick="handleApprove()">Approve</button>
+        </div>
+    </div>
+
+    <script>
+        let currentPhotoId = null;
+
+        async function loadNewPhoto() {
+            const photo = document.getElementById('current-photo');
+            const loading = document.querySelector('.loading');
+            const errorMessage = document.querySelector('.error-message');
+            
+            photo.style.display = 'none';
+            loading.style.display = 'block';
+            errorMessage.style.display = 'none';
+
+            try {
+                const response = await fetch('/get_random_photo');
+                if (!response.ok) {
+                    throw new Error(await response.text());
+                }
+                const data = await response.json();
+                
+                photo.src = data.url;
+                currentPhotoId = data.id;
+                
+                photo.onload = () => {
+                    loading.style.display = 'none';
+                    photo.style.display = 'block';
+                };
+            } catch (error) {
+                loading.style.display = 'none';
+                errorMessage.textContent = 'No more photos available or error loading photo';
+                errorMessage.style.display = 'block';
+                console.error('Error:', error);
+            }
+        }
+
+        async function handleApprove() {
+            if (!currentPhotoId) return;
+            
+            try {
+                const response = await fetch(`/approve_photo/${currentPhotoId}`, {
+                    method: 'POST'
+                });
+                if (!response.ok) {
+                    throw new Error(await response.text());
+                }
+                loadNewPhoto();
+            } catch (error) {
+                console.error('Error approving photo:', error);
+                alert('Error approving photo');
+            }
+        }
+
+        async function handleSkip() {
+            if (!currentPhotoId) return;
+            
+            try {
+                const response = await fetch(`/skip_photo/${currentPhotoId}`, {
+                    method: 'POST'
+                });
+                if (!response.ok) {
+                    throw new Error(await response.text());
+                }
+                loadNewPhoto();
+            } catch (error) {
+                console.error('Error skipping photo:', error);
+                alert('Error skipping photo');
+            }
+        }
+
+        // Load first photo when page loads
+        window.onload = loadNewPhoto;
+    </script>
+</body>
+</html>
